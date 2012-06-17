@@ -323,6 +323,18 @@
   (ptest "-3+2*5" ["+" -3 ["*" 2 5]] (expr))
   )
 
+(deftest test-eval-expr
+  (is (= (eval-expr "3") 3))
+  (is (= (eval-expr "-3") -3))
+  (is (= (eval-expr "3+2") 5))
+  (is (= (eval-expr "3+ -2") 1))
+  (is (= (eval-expr "3+-2") 1))
+  (is (= (eval-expr "3+2*3") 9))
+  (is (= (eval-expr "3+2*3+4") 13))
+  (is (= (eval-expr "(3+2)*3+4") 19))
+  (is (= (eval-expr "(3+2)*(3+4)") 35))
+  )
+
 (use '[clojure.java.shell :only [sh]])
 (defn test-xml []
   (let [ dir (str (System/getProperty "user.home") "/test/data/xmltest/valid")
