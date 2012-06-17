@@ -768,15 +768,15 @@ reader based on other parser options such as :ws-regex, :blk-cmt-delim and
       (let [node (nodes i)
             nc (count tree)
             n0 (get tree 0) n1 (get tree 1) n2 (get tree 2)]
-        (cond
-          (= nc 0) (recur (inc i) [node])
-          (= nc 1) (recur (inc i) [node n0])
-          (= nc 2) (recur (inc i) [n0 n1 node])
-          (= nc 3) (recur (inc i) (if (odd? i) ; operator
-                                    (if (has-priority? n0 node)
-                                      [node tree]
-                                      [n0 n1 [node n2]])
-                                    [n0 n1 [(n2 0) (n2 1) node]]))))
+        (case nc
+              0 (recur (inc i) [node])
+              1 (recur (inc i) [node n0])
+              2 (recur (inc i) [n0 n1 node])
+              3 (recur (inc i) (if (odd? i) ; operator
+                                 (if (has-priority? n0 node)
+                                   [node tree]
+                                   [n0 n1 [node n2]])
+                                 [n0 n1 [(n2 0) (n2 1) node]]))))
       tree)))
 
 (defn- get-op-fn [op]
