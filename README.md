@@ -4,9 +4,9 @@ Parse-EZ is a parser library for Clojure programmers. It provides a number of
 parse functions and combinators and comes with a built-in customizable infix
 expression parser and evaluator. It allows the programmer to concisely specify
 the structure of input text using clojure functions and easily build parse trees
-without having to step out of Clojure.  Whether you are implementing some sort
-of screen-scraping, data parsing or implementing a language, you can make use
-of this library to quickly create a parser.
+without having to step out of Clojure.  Whether you are writing a parser
+for some well structured data or for data scraping or for a new language, 
+you can make use of this library to quickly create a parser.
 
 ## Features
 

@@ -333,6 +333,8 @@
   (is (= (eval-expr "3+2*3+4") 13))
   (is (= (eval-expr "(3+2)*3+4") 19))
   (is (= (eval-expr "(3+2)*(3+4)") 35))
+  (is (= (eval-expr "(3*6/2)") 9))
+  (is (= (eval-expr "(36/2*3)") 54))
   )
 
 (use '[clojure.java.shell :only [sh]])
