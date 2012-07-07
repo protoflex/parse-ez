@@ -9,8 +9,6 @@
 (ns ^{ :doc "Clojure Parser Library." :author "Panduranga Adusumilli"}
     protoflex.parse
   (:import [java.util.regex Matcher])
-  (:require [clojure.set :as set]
-            [clojure.zip :as zip])
   (:use [protoflex.util]))
 
 (declare parser-init set-pos throw-ex starts-with? move read-ch read-ch-in-set
@@ -28,7 +26,7 @@
                       :line-cmt-start "//"
                       :ws-regex #"\s+"
                       :auto-trim true
-                      :word-reader #"\S+"
+                      :word-regex #"\S+"
                       :eof true })
 
 (defn parse
@@ -39,8 +37,8 @@ the comments and white space matching behavior:
    :line-cmt-start - string specifying the begin marker of a line comment
    :ws-regex - regular expression for matching (non-comment) white space
    :auto-trim - whether to automatically remove the leading whitespace/comments
-                at the current position in the input text.
-   :word-reader - regular expression for matching words
+                at the current position in the input text or immediately after a parse action.
+   :word-regex - regular expression for matching words
    :operators - a vector of vector of operators in the decreasing order of
                 precedence; see get-default-ops function for an example.
    :op-fn-map - a map of operator and the function to call for that operator when
@@ -209,7 +207,7 @@ at the current position. Throws an exception if none of the strings match."
 at the current position. Throws an exception if none of the words match.
 An optional word-reader parse-function may be provided to read words."
   ([str-coll]
-     (word-in str-coll #(regex (get-opt :word-reader))))
+     (word-in str-coll #(regex (get-opt :word-regex))))
   ([str-coll word-reader]
      (let [wset (to-set str-coll)
             w (word-reader)]
