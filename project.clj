@@ -7,5 +7,6 @@
                      [lein-clojars "0.6.0"]]
   :jvm-opts ["-Xmx512m"] 
   :warn-on-reflection true
-  :autodoc { :name "Parse Library", :page-title "Parse API Documentation"}
+  :autodoc { :name "Parse Library", :page-title "Parse API Documentation"
+             :copyright "Protoflex Software"}
   )

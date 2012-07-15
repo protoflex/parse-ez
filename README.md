@@ -1,4 +1,4 @@
-# Parse-EZ
+# Parse-EZ : Clojure Parser Library
 
 [See API Documentation](http://www.protoflex.com/parse-ez/api-doc/index.html "Parse-EZ API")
 
@@ -94,7 +94,7 @@ user>
 ```
 
 You can start parsing by looking for some marker patterns using the `read-to`,
-`skip-over`, `skip-over-re` functions.
+`read-to-re`, `skip-over`, `skip-over-re` functions.
 
 ```clojure
 user> (parse #(do (skip-over ">>") (number)) "ignore upto this>> 456.7")
@@ -409,6 +409,6 @@ makes use of some of the ideas in there, it is *not* a port of Parsec to Clojure
 
 ## License
 
-Copyright (C) 2012 Protoflex Technologies Pvt. Ltd.
+Copyright (C) 2012 Protoflex Software
 
 Distributed under the Eclipse Public License, the same as Clojure.
