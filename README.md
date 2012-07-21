@@ -1,6 +1,7 @@
 # Parse-EZ : Clojure Parser Library
 
-[See API Documentation](http://www.protoflex.com/parse-ez/api-doc/index.html "Parse-EZ API")
+[api]: http://www.protoflex.com/parse-ez/api-doc/protoflex.parse-api.html "Parse-EZ API"
+[See API Documentation][api]
 
 Parse-EZ is a parser library for Clojure programmers. It provides a number of
 parse functions and combinators and comes with a built-in customizable infix
@@ -58,7 +59,7 @@ Also see the `no-trim` and `no-trim-nl` functions.
 Parse-EZ provides a number of primitive parse functions such as: `chr`, `chr-in`, `string`,
 `string-in`, `word`, `word-in`, `sq-str`,  `dq-str`, `any-string`, `regex`, `read-to`, `skip-over`,
 `read-re`, `read-to-re`, `skip-over-re`, `read-n`, `read-ch`, `read-ch-in-set`, etc.
-[See API Documentation](http://www.protoflex.com/parse-ez/api-doc/index.html "Parse-EZ API")
+[See API Documentation][api]
 
 Let us try some of the builtin primitive parse functions:
 
@@ -108,7 +109,7 @@ functions as input arguments and combine/apply them in different ways to
 implement new parse functionality.  Parse-EZ provides parse combinators such as:
 `opt`, `attempt`, `any`, `series`, `multi*`, `multi+`, `between`, `look-ahead`, `lexeme`,
 `expect`, etc.
-[See API Documentation](http://www.protoflex.com/parse-ez/api-doc/index.html "Parse-EZ API")
+[See API Documentation][api]
 
 Let us try some of the builtin parse combinators:
 
