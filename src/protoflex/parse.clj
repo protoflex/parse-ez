@@ -32,7 +32,7 @@
 (defn parse
   "This function triggers off the parsing of the provided input string using
 the specified parse function. The following parser options may be provided to alter
-the comments and white space matching behavior:
+the default behavior of the parser:
    :blk-cmt-delim - vector specifying start and end of block-comment markers
    :line-cmt-start - string specifying the begin marker of a line comment
    :ws-regex - regular expression for matching (non-comment) white space
@@ -111,7 +111,7 @@ applying the corresponding parse function. "
 
 
 (defn series
-  "Matches a sequence of parse functions and returns their results in
+  "Applies a sequence of parse functions and returns their results in
 a vector. Each successfull match by the parse function advances the cursor.
 If any of the parse functions fails, an exception is thrown."
   [& parse-fns]
