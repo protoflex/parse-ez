@@ -750,15 +750,10 @@ reader based on other parser options such as :ws-regex, :blk-cmt-delim and
 
 (defn expr
   "Parses expressions and returns the parse tree as nested vectors."
-  ([]
-     (expr []))
-  ([nodes]
-     (if-let [fac1 (attempt factor)]
+  [] (if-let [fac (attempt factor)]
        (if-let [rhs (multi* #(series binary-operator factor))]
-         (build-tree
-             (reduce #(-> %1 (conj (%2 0)) (conj (%2 1))) (conj nodes fac1) rhs))
-         (if (empty? nodes) fac1 (build-tree (conj nodes fac1))))
-       (build-tree nodes))))
+         (-> (into [fac] (apply concat rhs)) build-tree )
+         fac)))
 
 (defn build-tree [nodes]
   (loop [i 0 tree []]
