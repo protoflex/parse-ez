@@ -97,14 +97,16 @@ trimming functionality using the `no-trim-nl` combinator.
     (multi* (fn [] (no-trim-nl #(csv-1 sep)))))
 ```
 
-Now, let us try out our csv parser. First let us define a couple of test strings containing
-a couple of records (lines) each.  Note that the second string contains a comma inside
-the first cell (a quoted string).  Alternatively, you can express the above function a bit more easily using the macro versions of combinators introduced in Version 0.3.0 as follows:
+Alternatively, you can express the above function a bit more easily using the macro versions of combinators introduced in Version 0.3.0 as follows:
 
 ```clojure
 (defn csv [sep] 
     (multi* (no-trim-nl_ (csv-1 sep))))
 ```
+
+Now, let us try out our csv parser. First let us define a couple of test 
+strings containing a couple of records (lines) each.  Note that the second 
+string contains a comma inside the first cell (a quoted string).  
 
 ```clojure
 user> (def s1 "1abc,def,ghi\n2jkl,mno,pqr\n")
