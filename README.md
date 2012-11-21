@@ -65,8 +65,7 @@ specify the desired behavior succinctly.  The `any-string` function matches a si
 string or a double-quoted string or a plain-string that is followed by the specified separator
 `sep`.  This is exactly the function that we need to read the field-value.  The second argument
 provided to `sep-by` above uses the primitive parse function `chr` which succeeds only when
-the next character in the input matches its argument (`sep` parameter in this case).  This
-function returns the field values as a vector.
+the next character in the input matches its argument (`sep` parameter in this case).  The _csv-1_ function returns the field values as a vector.
 
 The `sep-by` function actually takes a third, optional argument as record-separator
 function with the default value of a function that matches a newline.  We didn't
@@ -100,7 +99,12 @@ trimming functionality using the `no-trim-nl` combinator.
 
 Now, let us try out our csv parser. First let us define a couple of test strings containing
 a couple of records (lines) each.  Note that the second string contains a comma inside
-the first cell (a quoted string).
+the first cell (a quoted string).  Alternatively, you can express the above function a bit more easily using the macro versions of combinators introduced in Version 0.3.0 as follows:
+
+```clojure
+(defn csv [sep] 
+    (multi* (no-trim-nl_ (csv-1 sep))))
+```
 
 ```clojure
 user> (def s1 "1abc,def,ghi\n2jkl,mno,pqr\n")
