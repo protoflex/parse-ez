@@ -1,10 +1,10 @@
-;   Copyright (c) Protoflex Software. All rights reserved.
-;   The use and distribution terms for this software are covered by the
-;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;   which can be found in the file epl-v10.html at the root of this distribution.
-;   By using this software in any fashion, you are agreeing to be bound by
-;   the terms of this license.
-;   You must not remove this notice, or any other, from this software.
+;Copyright (c) Protoflex Software. All rights reserved.
+;The use and distribution terms for this software are covered by the
+;Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
+;which can be found in the file epl-v10.html at the root of this distribution.
+;By using this software in any fashion, you are agreeing to be bound by
+;the terms of this license.
+;You must not remove this notice, or any other, from this software.
 
 (ns ^{:doc "Test Parse Library functions" :author "Panduranga Adusumilli"}
   protoflex.test_parse
@@ -17,8 +17,15 @@
   (let [res# `(parse #(do ~@body) ~s :eof false)]
     `(is (= ~res# ~expected))))
 
+(defmacro ptest_ [s expected pf]
+  (let [res# `(parse ~pf ~s :eof false)]
+    `(is (= ~res# ~expected))))
+
 (defmacro ptest-fail [s & body]
   `(is (~'thrown? Exception (parse #(do ~@body) ~s))))
+
+(defmacro ptest-fail_ [s & pf]
+  `(is (~'thrown? Exception (parse ~pf ~s))))
 
 (deftest test-chr
   (ptest "abc" \a (chr \a))
@@ -87,10 +94,15 @@
 
 (deftest test-regex
   (ptest "abc def123" "abc def" (regex #"\w+\s+([a-z]*)"))
+  (ptest "abc def123" "abc def" (regex "\\w+\\s+([a-z]*)"))
   (ptest "abc def123 456" ["abc" "def123" "456"]
          [(regex #"\w+") (regex #"\w+") (regex #"\d+")])
+  (ptest "abc def123 456" ["abc" "def123" "456"]
+         [(regex "\\w+") (regex "\\w+") (regex "\\d+")])
   (ptest "abc def123" "123" (regex #"(a\w+)\s+[a-z]*(\d+)" 2))
+  (ptest "abc def123" "123" (regex "(a\\w+)\\s+[a-z]*(\\d+)" 2))
   (ptest-fail "abcdef123" (regex #"\w+\s+([a-z]*)"))
+  (ptest-fail "abcdef123" (regex "\\w+\\s+([a-z]*)"))
   )
 
 
@@ -140,16 +152,21 @@
 
 (deftest test-read-re
   (ptest "abc123" "abc" (read-re #"(\D+)"))
+  (ptest "abc123" "abc" (read-re "(\\D+)"))
   )
 
 (deftest test-read-to-re
   (ptest "123abc" "123" (read-to-re #"(\D+)"))
+  (ptest "123abc" "123" (read-to-re "(\\D+)"))
   )
 
 (deftest test-skip-over-re
   (ptest "123abc456" "123abc" (skip-over-re #"(\D+)"))
+  (ptest "123abc456" "123abc" (skip-over-re "(\\D+)"))
   (ptest "123abc" "123" (skip-over-re #"(\d+)"))
+  (ptest "123abc" "123" (skip-over-re "(\\d+)"))
   (ptest-fail "123abc" (skip-over-re #"([x-z]+)"))
+  (ptest-fail "123abc" (skip-over-re "([x-z]+)"))
   )
 
 (deftest test-starts-with?
@@ -161,7 +178,9 @@
 
 (deftest test-starts-with-re?
   (ptest "123abc" true (starts-with-re? #"\d+"))
-  (ptest "abc123" false (starts-with-re? #"\d+"))
+  (ptest "123abc" true (starts-with-re? "\\d+"))
+  (ptest "abc123" false (starts-with-re? #"\\d+"))
+  (ptest "abc123" false (starts-with-re? "\\d+"))
   )
 
 (deftest test-read-n
@@ -224,6 +243,12 @@
   (is (thrown? Exception (parse #(with-trim-off (string "abc")) "  abc" :auto-trim false)))
   )
 
+(deftest test-no-trim
+  (ptest_ "123 456" [123 " " 456] (no-trim_ (series number #(string " ") number)))
+  (ptest-fail "123 456" (series number #(string " ") number))
+  (ptest_ "123 \n 456" [123 "\n" 456] (no-trim-nl_ (series number #(string "\n") number)))
+  )
+
 (deftest test-lexeme
   (let [wr #(regex #"\w+")]
     (ptest "abc/*comment*/def" ["abc" "def"]
@@ -233,16 +258,27 @@
     )
   )
 
-
 (deftest test-attempt
   (ptest "abc" "abc" (attempt #(string "abc")))
+  (ptest_ "abc" "abc" (attempt_ (string "abc")))
   (ptest "abc" nil (attempt #(string "def")))
+  (ptest_ "abc" nil (attempt_ (string "def")))
+  )
+
+(deftest test-opt
+  (ptest "abc" "abc" (opt #(string "abc")))
+  (ptest_ "abc" "abc" (opt_ (string "abc")))
+  (ptest "abc" 123 (opt #(string "def") 123))
+  (ptest_ "abc" 123 (opt_ (string "def") 123))
   )
 
 (deftest test-any
   (ptest "abcdef" "abc" (any #(regex #"\d+") #(string "abc")))
+  (ptest_ "abcdef" "abc" (any_ (regex #"\d+") (string "abc")))
   (ptest "123abcdef" "123" (any #(regex #"\d+") #(string "abc")))
+  (ptest_ "123abcdef" "123" (any_ (regex #"\d+") (string "abc")))
   (ptest-fail "abcdef" (any #(regex #"\d+") #(string "xyz")))
+  (ptest-fail_ "abcdef" (any_ (regex #"\d+") (string "xyz")))
   )
 
 (deftest test-look-ahead
@@ -264,31 +300,74 @@
 (deftest test-series
   (ptest "abc123xxx" ["abc" "123" "xxx"]
     (series #(string "abc") #(regex #"\d+") #(word "xxx")))
+  (ptest_ "abc123xxx" ["abc" "123" "xxx"]
+    (series_ (string "abc") (regex #"\d+") (word "xxx")))
 
   (ptest-fail "abc123xxx"
     (series #(string "abc") #(regex #"[a-w]+") #(word "xxx")))
+  (ptest-fail_ "abc123xxx"
+    (series_ (string "abc") (regex #"[a-w]+") (word "xxx")))
   )
 
 (deftest test-multi*
   (ptest "abcabcabcdef" ["abc" "abc" "abc"] (multi* #(string "abc")))
+  (ptest_ "abcabcabcdef" ["abc" "abc" "abc"] (multi*_ (string "abc")))
+
   (ptest "xyzabcabcabc" nil (multi* #(string "abc")))
+  (ptest_ "xyzabcabcabc" nil (multi*_ (string "abc")))
+
   (ptest "" nil (multi* #(string "abc")))
+  (ptest_ "" nil (multi*_ (string "abc")))
+
   (ptest "xyzabcabc" ["xyz" ["abc" "abc"]]
     [(string "xyz") (multi* #(string "abc"))])
+  (ptest "xyzabcabc" ["xyz" ["abc" "abc"]]
+    (series #(string "xyz") (multi*_ (string "abc"))))
+  (ptest_ "xyzabcabc" ["xyz" ["abc" "abc"]]
+    (fn [] (series #(string "xyz") (multi*_ (string "abc")))))
   )
 
 (deftest test-multi+
   (ptest "abcabcabcdef" ["abc" "abc" "abc"] (multi+ #(string "abc")))
+  (ptest_ "abcabcabcdef" ["abc" "abc" "abc"] (multi+_ (string "abc")))
+
   (ptest-fail "xyzabcabcabc" (multi+ #(string "abc")))
+  (ptest-fail_ "xyzabcabcabc" (multi+_ (string "abc")))
+
   (ptest-fail "" (multi+ #(string "abc")))
+  (ptest-fail_ "" (multi+_ (string "abc")))
+
   (ptest "xyzabcabc" ["xyz" ["abc" "abc"]]
     [(string "xyz") (multi+ #(string "abc"))])
+  (ptest_ "xyzabcabc" ["xyz" ["abc" "abc"]]
+    (fn [] (series #(string "xyz") (multi+_ (string "abc")))))
+  )
+
+(deftest test-times
+  (ptest "aaaa" [\a \a \a \a] (times 4 #(chr \a)))
+  (ptest_ "aaaa" [\a \a \a \a] (times_ 4 (chr \a)))
+
+  (ptest "aaaa" ["aa" "aa"] (times 2 #(string "aa")))
+  (ptest_ "aaaa" ["aa" "aa"] (times_ 2 (string "aa")))
+
+  (ptest "aa aa" ["aa" "aa"] (times 2 #(string "aa")))
+  (ptest_ "aa aa" ["aa" "aa"] (times_ 2 (string "aa")))
   )
 
 (deftest test-expect
   (ptest "230" "230" (expect "integer" #(regex #"\d+")))
+  (ptest_ "230" "230" (expect_ "integer" (regex #"\d+")))
+
   (try (parse (fn [] (expect "integer" #(regex #"\d+"))) "x230")
-       (catch Exception ex (is (.contains (.getMessage ex) "Expected integer"))))
+       (catch Exception ex (is (.contains (.getMessage ex) "Expecting \"integer\""))))
+  (try (parse (expect_ "integer" (regex #"\d+")) "x230")
+       (catch Exception ex (is (.contains (.getMessage ex) "Expecting \"integer\""))))
+  )
+
+(deftest test-parse_
+  (is (= (parse_ [(string "abc"), (string "def")] "abc def") ["abc" "def"]))
+  (is (= (parse_ [(regex #"\d+"), (regex "\\S+")] "123 def") ["123" "def"]))
+  (is (= (parse_ (multi+ (any_ (regex #"\d+") (regex #"\D+"))) "123 def456") ["123" "def" "456"]))
   )
 
 (deftest test-sep-by
@@ -348,5 +427,6 @@
                  "/sa/051.xml"
                  "/sa/114.xml"
                  }]
-      (doseq [f files] (if (not (get ignore (subs f (count dir)))) (do (println f) (parse-xml (slurp f)))))))
+    (doseq [f files] (if (not (get ignore (subs f (count dir)))) 
+                       (do (println f) (parse-xml (slurp f)))))))
 
