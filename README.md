@@ -1,22 +1,27 @@
 # Parse-EZ : Clojure Parser Library
 
 [api]: http://www.protoflex.com/parse-ez/api-doc/protoflex.parse-api.html "Parse-EZ API"
-[See API Documentation][api]
+[API Documentation][api]
 
-Parse-EZ is a parser library for Clojure programmers. It provides a number of
+Parse-EZ is a parser library for Clojure programmers. It allows easy
+mixing of declarative and imperative styles and does not 
+require any special constructs, macros, monads, etc. to write custom parsers. 
+All the parsing is implemented using regular Clojure functions.
+
+The library provides a number of
 parse functions and combinators and comes with a built-in customizable infix
 expression parser and evaluator. It allows the programmer to concisely specify
-the structure of input text using clojure functions and easily build parse trees
+the structure of input text using Clojure functions and easily build parse trees
 without having to step out of Clojure.  Whether you are writing a parser
-for some well structured data or for data scraping or for a new language, 
+for some well structured data or for data scraping or prototyping a new language, 
 you can make use of this library to quickly create a parser.
 
 ## Features
 
 - Parse functions and Combinators
 - Automatic handling of whitespaces, comments
-- Marking positions and Backtracking
-- Seek, read, skip string or regular expression patterns
+- Marking positions and backtracking
+- Seek, read, skip string/regex patterns
 - Builtin customizable expression parser and evaluator
 - Exceptions based error handling
 - Custom error messages
@@ -24,11 +29,10 @@ you can make use of this library to quickly create a parser.
 ## Usage
 
 ### Installation
-Installation is quite simple.  Just add Parse-EZ as a dependency to your lein
-project
+Just add Parse-EZ as a dependency to your lein project
 
 ```clojure
-[parse-ez "0.2.0"]
+[parse-ez "0.3.0"]
 ```
 and run
 
@@ -36,136 +40,9 @@ and run
 lein deps
 ```
 
-### Comments and Whitespaces
+## A Taste of Parse-EZ
 
-By default, Parse-EZ automatically handles comments and whitespaces. This
-behavior can be turned on or off temporarily using the macros `with-trim-on`
-and `with-trim-off` respectively. The parser option `:auto-trim` can be used to
-enable or disable the auto handling of whitespace and comments.  Use the parser
-option `:blk-cmt-delim` to specify the begin and end delimiters for block
-comments.  The parser option `:line-cmt-start` can be used to specify the line
-comment marker.  By default, these options are set to java/C++ block and line
-comment markers respectively.  You can alter the whitespace recognizer by setting
-the `:word-regex` parser option.  By default it is set to `#"\s+"`.
-
-Alternatively, you can turn off auto-handling of whitespace and comments and use
-the `lexeme` function which trims the whitespace/comments after application of the
-parse-function passed as its argument.
-
-Also see the `no-trim` and `no-trim-nl` functions.
-
-### Primitive Parse Functions
-
-Parse-EZ provides a number of primitive parse functions such as: `chr`, `chr-in`, `string`,
-`string-in`, `word`, `word-in`, `sq-str`,  `dq-str`, `any-string`, `regex`, `read-to`, `skip-over`,
-`read-re`, `read-to-re`, `skip-over-re`, `read-n`, `read-ch`, `read-ch-in-set`, etc.
-[See API Documentation][api]
-
-Let us try some of the builtin primitive parse functions:
-
-```clojure
-user> (use 'protoflex.parse)
-nil
-user> (parse integer "12")
-12
-user> (parse decimal "12.5")
-12.5
-user> (parse #(chr \a) "a")
-\a
-user> (parse #(chr-in "abc") "b")
-\b
-user> (parse #(string-in ["abc" "def"]) "abc")
-"abc"
-user> (parse #(string-in ["abc" "def"]) "abcx")
-Parse Error: Extraneous text at line 1, col 4
-  [Thrown class java.lang.Exception]
-```
-
-Note the parse error for the last parse call. By default, the `parse` function parses to the
-end of the input text.  Even though the first 3 characters of the input text is recognized
-as valid input, a parse error is generated because the input cursor would not be at the
-end of input-text after recognizing "abc".
-
-The parser option `:eof` can be set to false to allow recognition of partial input:
-
-```clojure
-user> (parse #(string-in ["abc" "def"]) "abcx" :eof false)
-"abc"
-user> 
-```
-
-You can start parsing by looking for some marker patterns using the `read-to`,
-`read-to-re`, `skip-over`, `skip-over-re` functions.
-
-```clojure
-user> (parse #(do (skip-over ">>") (number)) "ignore upto this>> 456.7")
-456.7
-```
-
-### Parse Combinators
-
-Parse Combinators in Parse-EZ are higher-order functions that take other parse
-functions as input arguments and combine/apply them in different ways to 
-implement new parse functionality.  Parse-EZ provides parse combinators such as:
-`opt`, `attempt`, `any`, `series`, `multi*`, `multi+`, `between`, `look-ahead`, `lexeme`,
-`expect`, etc.
-[See API Documentation][api]
-
-Let us try some of the builtin parse combinators:
-
-```clojure
-user> (parse #(opt integer) "abc" :eof false)
-nil
-user> (parse #(opt integer) "12")
-12
-user> (parse #(any integer decimal) "12")
-12
-user> (parse #(any integer decimal) "12.3")
-12.3
-user> (parse #(series integer decimal integer) "3 4.2 6")
-[3 4.2 6]
-user> (parse #(multi* integer) "1 2 3 4")
-[1 2 3 4]
-user> (parse #(multi* (fn [] (string-in ["abc" "def"]))) "abcabcdefabc abcdef")
-["abc" "abc" "def" "abc" "abc" "def"]
-user> 
-```
-
-You can create your own parse functions on top of primitive parse-functions and/or
-parse combinators provided by Parse-EZ.
-
-### Error Handling
-
-Parse Errors are handled in Parse-EZ using Exceptions.  The default error messages generated
-by Parse-EZ include line and column number information and in some cases what is expected
-at that location.  However, you can provide your own custom error messages by using the
-`expect` parse combinator.
-
-### Expressions
-
-Parse-EZ includes a customizable expression parser `expr` for parsing expressions in infix
-notation and an expression evaluator function `eval-expr` to evaluate infix expressions.
-You can customize the operators, their precedences and associative properties using
-`:operators` option to the `parse` function.  For evaluating expressions, you can optionally
-specify the functions to invoke for each operator using the `:op-fn-map`.
-
-### Parser State
-
-The parser state consists of the input cursor and various parser options (specified or derived)
-such as those affecting whitespace and comment parsing, word recognizers, expression parsing,
-etc.  The parser options can be changed any time in your own parse functions using `set-opt`.
-
-Note that most of the parse functions affect Parser state (e.g: input cursor) and hence they are
-not pure functions.  The side-effects could be avoided by making the Parser State an explicit
-parameter to all the parse functions and returning the changed Parser State along with the parse
-value from each of the parse functions.  However, the result would be a significantly programmer
-unfriendly API.  We made a design decision to keep the parse fuctions simple and easy to use
-than to fanatically keep the functions "pure".
-
-## Examples
-
-To illustrate some of the features of Parse-EZ and to give a taste of Parse-EZ, a couple of
-example parsers are listed below.
+Here are a couple of sample parsers to give you a taste of the parser library.
 
 ### CSV Parser
 
@@ -178,16 +55,14 @@ cases they will not be treated as field separators.
 First, let us define a parse function for parsing one-line of csv file:
 
 ```clojure
-user> (defn csv-1
-  [sep] (sep-by #(any-string sep) #(chr sep)))
-#'user/csv-1
-user> 
+(defn csv-1 [sep] 
+    (sep-by #(any-string sep) #(chr sep)))
 ```
 In the above function definition, we make use of the parse combinator `sep-by`
 which takes two arguments: the first one to read a field-value and the second
 one to read the separator.  Here, we have used Clojure's anonymous function shortcuts to
 specify the desired behavior succinctly.  The `any-string` function matches a single-quoted
-string, or a double-quoted string, or a plain-string that is followed by the specified separator
+string or a double-quoted string or a plain-string that is followed by the specified separator
 `sep`.  This is exactly the function that we need to read the field-value.  The second argument
 provided to `sep-by` above uses the primitive parse function `chr` which succeeds only when
 the next character in the input matches its argument (`sep` parameter in this case).  This
@@ -200,10 +75,8 @@ Had the default behavior of `sep-by` been different, we would have written the
 above function as:
 
 ```clojure
-user> (defn csv-1
-  [sep] (sep-by #(any-string sep) #(chr sep) #(regex #"\r?\n")))
-#'user/csv-1
-user> 
+(defn csv-1 [sep] 
+    (sep-by #(any-string sep) #(chr sep) #(regex #"\r?\n")))
 ```
 
 Now that we have created a parse function to parse a single line of CSV
@@ -221,10 +94,8 @@ which is the record-separator in this case.  So, we will disable the newline
 trimming functionality using the `no-trim-nl` combinator.
 
 ```clojure
-user> (defn csv
-  [sep] (multi* (fn [] (no-trim-nl #(csv-1 sep)))))
-#'user/csv
-user> 
+(defn csv [sep] 
+    (multi* (fn [] (no-trim-nl #(csv-1 sep)))))
 ```
 
 Now, let us try out our csv parser. First let us define a couple of test strings containing
@@ -259,16 +130,13 @@ Here is our strategy to detect the separator:
 Here is the code:
 
 ```clojure
-user> (defn detect-sep []
+(defn detect-sep []
     (let [m (mark-pos)
            s (attempt #(any dq-str sq-str))
            s (if s s (no-trim #(read-to-re #",|\t")))
            sep (read-ch)]
        (back-to-mark m)
        sep))
-
-#'user/detect-sep
-user> 
 ```
 
 Note how we used the `mark-pos` and `back-to-mark` Parse-EZ functions to 'unconsume'
@@ -345,13 +213,23 @@ key is a vector (potentially empty) containing string content and/or maps for ch
 (defn- pi [] (while (starts-with? "<?") (skip-over "?>")))
 
 (defn- prolog [] (pi) (attempt  #(regex #"(?s)<!DOCTYPE([^<]+?>)|(.*?\]\s*>)")) (pi))
+```
+The function _parse-xml_ is the entry point that kicks off parsing of input xml string _xml-str_.  It passes the _between_ combinator to __Parse-EZ__'s _parse_ function. Here, the call to _between_ returns the value returned by the _element_ parse function, ignoring the content surrounding it (matched by _prolog_ and _pi_ functions). The block-comment delimiters are set to match XML's and the line-comment delimiter is cleared (by default these match Java comments).
 
+The parse function _pi_ is used to skip consecutive processing instructions by using the delimiters __<?__ and __?>__.
+
+The parse function _prolog_ is used to skip DTD declaration (if any) and also any surrounding processing instructions.  Note that the regex used to match DTD declaration is only meant for illustration purposes. It isn't complete but will work in most cases.
+
+```clojure
 (def name-start ":A-Z_a-z\\xC0-\\xD6\\xD8-\\xF6\\xF8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD")
 
 (def name-char (str name-start "\\-.0-9\\xB7\\u0300-\\u036F\\u203F-\\u2040"))
 
 (def name-re (-> (format "[%s][%s]*" name-start name-char) re-pattern))
+```
+_name-re_ is a regular expression that matches xml element and attribute names.
 
+```clojure
 (defn element []
   (let [tag (do (chr \<) (regex name-re))
         attrs (attributes)
@@ -359,26 +237,44 @@ key is a vector (potentially empty) containing string content and/or maps for ch
                                ">" #(children-and-close tag)
                                "/>" (fn [] [])])]
     {:tag tag, :attributes attrs, :children children}))
+```
+The _element_ parse function matches an xml element and returns the tag, attribute list and children in a hash map. Note the usage of the _look_ahead*_ combinator to handle both the cases -- with children and without children. If it sees a ">" after reading the attributes, the _look-ahead*_ function calls the _children-and-close_ parse function to read children and the element close tag. On the other hand, if it sees "/>" after the attributes, it calls the (almost) empty parse function that simply returns an empty list.
 
+```clojure
 (defn attr []
   (let [n (regex name-re) _ (chr \=)
         v (any sq-str dq-str)]
     [n v]))
 
 (defn attributes [] (apply hash-map (flatten  (multi* attr))))
+```
+The _attr_ parse function matches a single attribute. The attribute value may be
+a single-quoted or double-quoted string. Note the usage of _any_ parse combinator for this purpose.
 
+The _attributes_ parse function matches multiple attribute specifications by passing the _attr_ parse function to _multi*_ parse combinator.
+
+```clojure
 (defn- children-and-close [tag]
   (let [children (multi* #(between pi elem-or-text pi))]
     (close-tag tag)
     children))
+```
+Each child item is read using the _elem-or-text_ parse function while ignoring any surrounding processing instructions using the _between_ combinator; the combinator _multi*_ is used to read all the child items.
 
+```clojure
 (defn- elem-or-text []
   (look-ahead [
                "<![CDATA[" cdata
                "</" (fn [] nil)
                "<" element
                "" #(read-to "<")]))
+```
+The _look-ahead_ parse combinator is used to call different parse functions
+based on different lookahead strings. Note that the _look-ahead_ function 
+doesn't consume the lookahead string unlike the _look-ahead*_ function used
+earlier (in the definition of _element_ parse function).
 
+```clojure
 (defn- cdata []
   (string "<![CDATA[")
   (let [txt (read-to "]]>")] (string "]]>") txt))
@@ -386,8 +282,8 @@ key is a vector (potentially empty) containing string content and/or maps for ch
 (defn- close-tag [tag]
     (string (str "</" tag))
     (chr \>))
-
 ```
+By now, it should be obvious what the above two functions do.
 
 Well, an XML parser in under 50 lines.  Let's try it with a few sample inputs:
 
@@ -402,6 +298,146 @@ user> (parse-xml "<abc a1=\"1\" a2=\"attr 2\"><def d1=\"99\">xxx</def></abc>")
 {:tag "abc", :attributes {"a1" "1", "a2" "attr2"}, :children [{:tag "def", :attributes {"d1" "99"}, :children ["xxx"]}]}
 user> 
 ```
+
+## Comments and Whitespaces
+
+By default, Parse-EZ automatically handles comments and whitespaces. This
+behavior can be turned on or off temporarily using the macros `with-trim-on`
+and `with-trim-off` respectively. The parser option `:auto-trim` can be used to
+enable or disable the auto handling of whitespace and comments.  Use the parser
+option `:blk-cmt-delim` to specify the begin and end delimiters for block
+comments.  The parser option `:line-cmt-start` can be used to specify the line
+comment marker.  By default, these options are set to java/C++ block and line
+comment markers respectively.  You can alter the whitespace recognizer by setting
+the `:word-regex` parser option.  By default it is set to `#"\s+"`.
+
+Alternatively, you can turn off auto-handling of whitespace and comments and use
+the `lexeme` function which trims the whitespace/comments after application of the
+parse-function passed as its argument.
+
+Also see the `no-trim` and `no-trim-nl` functions.
+
+## Primitive Parse Functions
+
+Parse-EZ provides a number of primitive parse functions such as: `chr`, 
+`chr-in`, `string`, `string-in`, `word`, `word-in`, `sq-str`,  `dq-str`, 
+`any-string`, `regex`, `read-to`, `skip-over`, `read-re`, `read-to-re`, 
+`skip-over-re`, `read-n`, `read-ch`, `read-ch-in-set`, etc.
+[See API Documentation][api]
+
+Let us try some of the builtin primitive parse functions:
+
+```clojure
+user> (use 'protoflex.parse)
+nil
+user> (parse integer "12")
+12
+user> (parse decimal "12.5")
+12.5
+user> (parse #(chr \a) "a")
+\a
+user> (parse #(chr-in "abc") "b")
+\b
+user> (parse #(string-in ["abc" "def"]) "abc")
+"abc"
+user> (parse #(string-in ["abc" "def"]) "abcx")
+Parse Error: Extraneous text at line 1, col 4
+  [Thrown class java.lang.Exception]
+```
+
+Note the parse error for the last parse call. By default, the `parse` function parses to the
+end of the input text.  Even though the first 3 characters of the input text is recognized
+as valid input, a parse error is generated because the input cursor would not be at the
+end of input-text after recognizing "abc".
+
+The parser option `:eof` can be set to false to allow recognition of partial input:
+
+```clojure
+user> (parse #(string-in ["abc" "def"]) "abcx" :eof false)
+"abc"
+user> 
+```
+
+You can start parsing by looking for some marker patterns using the `read-to`,
+`read-to-re`, `skip-over`, `skip-over-re` functions.
+
+```clojure
+user> (parse #(do (skip-over ">>") (number)) "ignore upto this>> 456.7")
+456.7
+```
+
+## Parse Combinators
+
+Parse Combinators in Parse-EZ are higher-order functions that take other parse
+functions as input arguments and combine/apply them in different ways to 
+implement new parse functionality.  Parse-EZ provides parse combinators such as:
+`opt`, `attempt`, `any`, `series`, `multi*`, `multi+`, `between`, `look-ahead`, `lexeme`,
+`expect`, etc.
+[See API Documentation][api]
+
+Let us try some of the builtin parse combinators:
+
+```clojure
+user> (parse #(opt integer) "abc" :eof false)
+nil
+user> (parse #(opt integer) "12")
+12
+user> (parse #(any integer decimal) "12")
+12
+user> (parse #(any integer decimal) "12.3")
+12.3
+user> (parse #(series integer decimal integer) "3 4.2 6")
+[3 4.2 6]
+user> (parse #(multi* integer) "1 2 3 4")
+[1 2 3 4]
+user> (parse #(multi* (fn [] (string-in ["abc" "def"]))) "abcabcdefabc abcdef")
+["abc" "abc" "def" "abc" "abc" "def"]
+user> 
+```
+
+You can create your own parse functions on top of primitive parse-functions and/or
+parse combinators provided by Parse-EZ.
+
+## Nesting Parse Combinators Using Macros
+
+Version 0.3.0 of Parse-EZ adds macro versions of parse combinator functions
+to make it easy to nest calls to parse combinators without having to write
+nested anonymous functions using the "(fn [] ...)" syntax. Note that Clojure
+does not allow nesting of anonymous functions of "#(...)" forms.  Whereas
+the existing parse combinators take parse functions as arguments and actually
+perform parsing and return the parse results, the newly added macros take 
+parse expressions as arguments and return parse functions (to be passed 
+to other parse combinators).  These macros are named the same as the 
+corresponding parse combinators but with an underscore ("\_") suffix. For example
+the macro version of "any" is named "any_".
+
+## Error Handling
+
+Parse Errors are handled in Parse-EZ using Exceptions.  The default error messages generated
+by Parse-EZ include line and column number information and in some cases what is expected
+at that location.  However, you can provide your own custom error messages by using the
+`expect` parse combinator.
+
+## Expressions
+
+Parse-EZ includes a customizable expression parser `expr` for parsing expressions in infix
+notation and an expression evaluator function `eval-expr` to evaluate infix expressions.
+You can customize the operators, their precedences and associative properties using
+`:operators` option to the `parse` function.  For evaluating expressions, you can optionally
+specify the functions to invoke for each operator using the `:op-fn-map` option.
+
+## Parser State
+
+The parser state consists of the input cursor and various parser options (specified or derived)
+such as those affecting whitespace and comment parsing, word recognizers, expression parsing,
+etc.  The parser options can be changed any time in your own parse functions using `set-opt`.
+
+Note that most of the parse functions affect Parser state (e.g: input cursor) and hence they are
+not pure functions.  The side-effects could be avoided by making the Parser State an explicit
+parameter to all the parse functions and returning the changed Parser State along with the parse
+value from each of the parse functions.  However, the result would be a significantly programmer
+unfriendly API.  We made a design decision to keep the parse fuctions simple and easy to use
+than to fanatically keep the functions "pure".
 
 ## Relation to Parsec
 
