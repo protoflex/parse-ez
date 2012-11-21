@@ -7,5 +7,6 @@
 /checkouts
 /.lein-deps-sum
 /api-doc
-/README.html
+/README.md.html
+/ReleaseNotes.md.html
 /doc.sh
