@@ -1,4 +1,4 @@
-(defproject parse-ez "0.2.0"
+(defproject parse-ez "0.3.0"
   :description "Clojure Parser Library"
   :dependencies [
                  [org.clojure/clojure "1.3.0"]]
