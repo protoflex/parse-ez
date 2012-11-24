@@ -243,7 +243,7 @@
 
 (defn- exp-msg [x] (if (coll? x) (one-of-msg x) (dq x)))
 
-(defn- has-exp-msg? [ex]
+(defn- has-exp-msg? [^Exception ex]
   (let [m (.getMessage ex)]
     (and m (>= (.indexOf m "Parse Error") 0) (>= (.indexOf m "Expecting") 0))))
 
