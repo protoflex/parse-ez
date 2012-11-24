@@ -1,9 +1,9 @@
 (defproject parse-ez "0.3.0"
   :description "Clojure Parser Library"
-  :dependencies [
-                 [org.clojure/clojure "1.3.0"]]
-  :dev-dependencies [
-                     [lein-autodoc "0.9.0"]
+  :url "https://github.com/protoflex/parse-ez"
+  :license {:name "Eclipse Public License"}
+  :dependencies [[org.clojure/clojure "1.4.0"]]
+  :dev-dependencies [[lein-autodoc "0.9.0"]
                      [lein-clojars "0.6.0"]]
   :jvm-opts ["-Xmx512m"] 
   :warn-on-reflection true
