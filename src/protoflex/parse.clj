@@ -111,7 +111,7 @@
 
 (defmacro ->fns 
   [& exprs] 
-  `(map #(fn [] (eval %)) '~exprs))
+  `(map #(fn [] (in-ns 'protoflex.parse) (eval %)) '~exprs))
 
 (defmacro any_ 
   "Creates and returns a parse function that calls `any` when it is
