@@ -55,8 +55,8 @@
 
   [parse-fn input-str & opts]
   (let [options (merge default-options (apply hash-map opts))]
-    (binding [*parser-state* (parser-init input-str options)]
-      (in-ns 'protoflex.parse) ; for eval to work properly in non-repl env
+    (binding [*parser-state* (parser-init input-str options)
+              *ns* (find-ns 'protoflex.parse)]
       (init-operators (get options :operators (get-default-ops)))
       (set-opt :op-fn-map (get options :op-fn-map (get-default-op-fn-map)))
       (auto-trim-if)
