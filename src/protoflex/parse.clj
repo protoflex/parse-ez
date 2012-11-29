@@ -433,6 +433,7 @@
         (if (and (= ch qchar) (not is-esc))
           nil
           (do (.append sb ch) (recur)))))
+    (auto-trim-if)
     (.toString sb)))
 
 (defn next-text ^String []
