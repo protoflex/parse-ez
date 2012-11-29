@@ -1,4 +1,4 @@
-(defproject parse-ez "0.3.2"
+(defproject parse-ez "0.3.3"
   :description "Clojure Parser Library"
   :url "https://github.com/protoflex/parse-ez"
   :license {:name "Eclipse Public License"}
