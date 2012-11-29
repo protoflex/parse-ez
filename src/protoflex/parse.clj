@@ -427,7 +427,7 @@
   (let [sb (StringBuilder.)]
     (chr qchar) ; read and ignore
     (loop []
-      (let [ch (read-ch)
+      (let [ch (read-ch true)
             is-esc (= ch esc)
             ch (if is-esc (read-ch) ch)]
         (if (and (= ch qchar) (not is-esc))
