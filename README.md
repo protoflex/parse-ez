@@ -315,7 +315,7 @@ option `:blk-cmt-delim` to specify the begin and end delimiters for block
 comments.  The parser option `:line-cmt-start` can be used to specify the line
 comment marker.  By default, these options are set to java/C++ block and line
 comment markers respectively.  You can alter the whitespace recognizer by setting
-the `:word-regex` parser option.  By default it is set to `#"\s+"`.
+the `:ws-regex` parser option.  By default it is set to `#"\s+"`.
 
 Alternatively, you can turn off auto-handling of whitespace and comments and use
 the `lexeme` function which trims the whitespace/comments after application of the
