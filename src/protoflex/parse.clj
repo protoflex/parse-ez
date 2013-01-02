@@ -162,10 +162,10 @@
   a vector. Each successfull match by the parse function advances the cursor.
   If any of the parse functions fails, an exception is thrown."
   [& parse-fns]
+  ;(map #(%) parse-fns)
+  ; just applying map doesn't get the correct dynamically rebound var values.
+  ; doall & bound-fn don't seem to work; clojure bug?
   (letfn [(apply-fseq [fns]
-            ;(map #(%) fns)
-            ; just applying map doesn't get the correct dynamically rebound var values.
-            ; clojure bug?
             (loop [fst (first fns)
                    rst (rest fns)
                    result []]
