@@ -10,6 +10,7 @@
   protoflex.parse
   (:refer-clojure :exclude [replace reverse])
   (:import [java.util.regex Matcher])
+  (:import [clojure.lang ExceptionInfo])
   (:use [protoflex.util])
   (:require [clojure.string]))
 
@@ -19,7 +20,7 @@
          mark-pos back-to-mark any-string dq-str sq-str read-to-re at-end? 
          no-trim no-trim-nl get-opts set-opt get-default-ops 
          get-default-op-fn-map init-operators read-ws string expect
-         line-pos-str)
+         line-pos-str cursor-pos with-opts read-to-re-or-eof to-eof with-trim-off)
 
 (def ^:dynamic *parser-state* (atom []))
 (defn state [] (deref *parser-state*))
@@ -30,6 +31,7 @@
                       :ws-regex #"\s+"
                       :auto-trim true
                       :word-regex #"\S+"
+                      :ident-regex #"[a-zA-Z_][a-zA-Z0-9_]*"
                       :eof true })
 
 (defn parse
@@ -81,7 +83,9 @@
   [parse-fn]
   (let [m (mark-pos)]
     (try (let [r (parse-fn)] r)
-      (catch Exception ex (back-to-mark m) nil))))
+      (catch ExceptionInfo ex 
+        (when (:committed (ex-data ex)) (throw ex))
+        (back-to-mark m) nil))))
 
 (defmacro attempt_
   "Creates and returns a parse function that calls `attempt` when it is
@@ -188,6 +192,7 @@
     (if-let [r (attempt parse-fn)]
       (recur (conj rv r))
       (if (pos? (count rv)) rv))))
+    
 
 (defmacro multi*_
   "Creates and returns a parse function that calls `multi*` when it is
@@ -244,20 +249,15 @@
 
 (defn- exp-msg [x] (if (coll? x) (one-of-msg x) (dq x)))
 
-(defn- has-exp-msg? [^Exception ex]
-  (let [m (.getMessage ex)]
-    (and m (>= (.indexOf m "Parse Error") 0) (>= (.indexOf m "Expecting") 0))))
-
 (defn expect
   "Customize error message; if the specified parse function doesn't match
   the current input text, the error message of the parse exception will include
   the specified custom expected-message."
   [expected-msg parse-fn]
   (try (parse-fn)
-    (catch Exception ex 
-      (let [m (.getMessage ex)]
-        (if (has-exp-msg? ex) (throw ex)
-          (throw-ex (unexpected expected-msg)))))))
+    (catch ExceptionInfo ex 
+      (if (:unexpected (ex-data ex)) (throw ex) 
+        (throw-ex (unexpected expected-msg) {:unexpected true})))))
 
 (defmacro expect_
   "Creates and returns a parse function that calls `expect` when it is
@@ -266,12 +266,22 @@
   [expected-msg parse-expr]
   `#(expect ~expected-msg (fn [] (eval ~parse-expr))))
 
+(defn- has-parse-error-msg? [^Exception ex]
+  (let [m (.getMessage ex)]
+    (and m (>= (.indexOf m "Parse Error") 0))))
+
 (defn throw-ex
-  "Throws an exception; this is usually called to indicate a match
-  failure in a parse function."
-  ([] (throw-ex ""))
-  ([msg] (throw (Exception. (str "Parse Error: " msg " at "
-                                 (line-pos-str))))))
+  "Throws an exception of ExceptionInfo class; this is usually called to 
+   indicate a match failure in a parse function."
+  ([] (throw-ex "" {} nil))
+  ([msg] (throw-ex msg {} nil))
+  ([msg map] (throw-ex msg map nil))
+  ([msg map cause] 
+    (let [pos (line-pos-str (or (:pos map) (cursor-pos)))
+          msg (if (:msg-final map) msg (str "Parse Error: " msg " at " pos))
+          map (assoc map :msg-final true)]
+      (throw (ex-info msg map cause)))))
+
 (defn unexpected
   "Creates a message string for unexpected input exception."
   ([expected] (unexpected (next-n 10) expected))
@@ -282,7 +292,7 @@
 (defn- mchar [ch is-no-auto-trim]
   (let [c (read-ch is-no-auto-trim)]
     (if (= ch c) c
-      (throw-ex (unexpected c ch)))))
+      (do (move -1) (throw-ex (unexpected c ch))))))
 
 (defn chr
   "If the next character in the input matches the specified character ch,
@@ -340,6 +350,53 @@
   the input text; an exception is thrown otherwise."
   [w] (word-in #{w}))
 
+(defn ^String ident
+  "Reads an identifier at current input position using the ident-regex 
+   parser option. If id is specified, the read identifier must match the 
+   specified value; otherwise an exception is thrown."
+  [] (regex (get-opt :ident-regex)))
+
+(defn ^String key-word
+  "Reads an identifier at the current input position. If the read identifier
+   matches the specified keyword kw, the same is returned; otherwise, an
+   exception is thrown."
+  [kw] (expect kw #(if (= kw (ident)) kw (throw-ex))))
+
+(defn commit
+  "Applies supplied parse-fn and if it fails, the failure gets reported as a
+   'committed' exception, which prevents the parser from trying alternatives at
+   higher levels. On success, returns the result of parse-fn."
+  [parse-fn] 
+  (try (parse-fn) 
+    (catch ExceptionInfo ex 
+      (throw-ex (.getMessage ex) (assoc (ex-data ex) :committed true)))))
+
+(defn commit-on
+  "If the keyword kw occurs at the current position in the input text, parse-fn
+   will be applied next. If parse-fn fails, it will get reported as a 'committed'
+   exception, which prevents the parser from trying alternatives at higher levels.
+   On sucess, returns the result of parse-fn."
+  [kw parse-fn] 
+  (if (attempt #(key-word kw)) (commit parse-fn)))
+
+(defn with-follow
+  "Applies parse-fn and follow-fn in sequence; Ignores the result of follow-fn and
+   returns the result of parse-fn."
+  [parse-fn follow-fn] (let [r (parse-fn), _ (follow-fn)] r))
+
+(defn with-follow*
+  "Similar to with-follow, but commits to follow-fn parse if parse-fn succeeds. 
+   Returns the result of parse-fn."
+  [parse-fn follow-fn] (with-follow parse-fn #(commit follow-fn)))
+
+(defn with-no-follow
+  "Applies parse-fn and follow-fn in sequence; This method succeeds only if the 
+   follow-fn fails to match. Returns the result of parse-fn."
+  [parse-fn follow-fn] 
+  (let [r (parse-fn), f (attempt follow-fn)] 
+    (when f (throw-ex "Unexpected follow"))
+    r))
+
 (defn sep-by
   "Reads a record using the specified field, field-separator and 
   record-separator parse functions.  If no record-separator is specified, 
@@ -349,22 +406,36 @@
    (sep-by fld-fn fld-sep-fn #(regex #"\r?\n")))
 
   ([fld-fn fld-sep-fn rec-sep-fn]
-   (let [fst (fld-fn)
-         rst (multi* #(series fld-sep-fn fld-fn))
-         _ (any rec-sep-fn at-end?)
-         rst (if rst (map second rst))
-         result (if rst (vec(conj rst fst)) [fst])]
-     result
-     )))
+    (if-not (at-end?)
+      (let [fst (fld-fn)
+            rst (multi* #(series fld-sep-fn fld-fn))
+            _ (any rec-sep-fn at-end?)
+            rst (if rst (map second rst))
+            result (if rst (vec(conj rst fst)) [fst])]
+        result))))
+   
+
+(defn sep-rest [parse-fn sep-fn]
+  (let [rst (multi* #(series sep-fn parse-fn))]
+    (reduce (fn [a e] (conj a (e 1))) [] rst)))
+
+(defn sep-by* 
+  "Differs from sep-by in that it allows zero matches of parse-fn before stop-fn;
+   Unlike sep-by, stop-fn must match -- not optional."
+  [parse-fn sep-fn stop-fn]
+  (if-let [fst (attempt parse-fn)]
+    (let [rst (sep-rest parse-fn sep-fn), _ (stop-fn)]
+      (into [fst] rst)) ; then
+    (do (stop-fn) nil))) ; else
 
 (defn any-string
   "Reads a single-quoted or double-quoted or a plain-string that is followed
-  by the specified separator sep; the separator is not part of the returned
+  by the specified separator sep or EOF; the separator is not part of the returned
   string."
   [sep] (cond
           (starts-with? "\"") (dq-str)
           (starts-with? "'") (sq-str)
-          :else (read-to-re (re-pattern (str sep "|\r?\n")))))
+          :else (read-to-re-or-eof (re-pattern (str sep "|\r?\n")))))
 
 (defn between
   "Applies the supplied start-fn, parse-fn and end-fn functions and returns
@@ -400,6 +471,58 @@
   ([re] (regex re 0))
   ([re grp] (read-re re grp)))
 
+(defn semi 
+  "Matches and returns a semi-colon character"
+  [] (chr \;))
+
+(defn comma 
+  "Matches and returns a comma character"
+  [] (chr \,))
+
+(defn dot 
+  "Matches and retuns a dot character"
+  [] (chr \.))
+
+(defn colon 
+  "Matches and returns a colon character"
+  [] (chr \:))
+
+(defn popen 
+  "Matches and returns an opening paranthesis character"
+  [] (chr \())
+
+(defn pclose 
+  "Matches and returns a closing paranthesis character"
+  [] (chr \)))
+
+(defn bopen 
+  "Matches and returns an opening curly brace character"
+  [] (chr \{))
+
+(defn bclose 
+  "Matches and returns a closing curly brace character"
+  [] (chr \}))
+
+(defn sqopen 
+  "Matches and returns an opening curly brace character"
+  [] (chr \[))
+
+(defn sqclose 
+  "Matches and returns a closing curly brace character"
+  [] (chr \]))
+
+(defn aopen 
+  "Matches and returns an opening angular bracket character"
+  [] (chr \<))
+
+(defn aclose 
+  "Matches and returns a closing angular bracket character"
+  [] (chr \>))
+
+(defn equal 
+  "Matches and returns an equal character"
+  [] (chr \=))
+
 (defn integer
   "Parses a long integer value and returns a Long."
   [] (Long/parseLong (regex #"-?\d+(?!\w|\.)")))
@@ -425,7 +548,7 @@
 
 (defn- qstring [qchar esc]
   (let [sb (StringBuilder.)]
-    (chr qchar) ; read and ignore
+    (no-trim #(chr qchar)) ; read and ignore
     (loop []
       (let [ch (read-ch true)
             is-esc (= ch esc)
@@ -484,6 +607,12 @@
       (let [^String ms (if (string? m) m (m 0))
             i (.indexOf t ms)]
         (move i)))))
+
+(defn read-to-re-or-eof
+  "If the specified regex matches in the remaining text, returns text upto the match;
+   Otherwise returns all the remaining text and the input cursor is positioned at EOF."
+  [re]
+  (if-let [t (attempt #(read-to-re re))] t (to-eof)))
 
 (defn skip-over-re
   "Reads and returns text upto and including the text matched by the
@@ -554,10 +683,9 @@
   Throws an exception if the specified block-comment doesn't occur at the
   current position."
   [beg]
-  (if beg
-    (let [s1 (string beg)
-          s2 (any #(skip-over "\n") #(to-eof))]
-      (str s1 s2))))
+  (if beg 
+    (->> (with-trim-off (series #(string beg) #(regex #"[^\n]*\n?"))) 
+         (apply str))))
 
 (defn line-cmt?
   "Similar to line-cmt but returns a nil instead of throwing an exception
@@ -592,19 +720,41 @@
   "Returns true if no more input is left to be read; false otherwise."
   [] (let [[^String s c _ _] (state)] (= (.length s) c)))
 
-(defn line-pos
-  "Returns [line column] vector representing the current cursor position
-  of the parser"
-  [] (let [[^String s c p _] (state)]
-       (loop [i 0, nl-cnt 0, col 0]
-         (if (= i c) [(inc nl-cnt) (inc col)]
+(defn cursor-pos
+  "Returns the current cursor position as a scalar"
+  [] (let [[_ c _ _] (state)] c))
+
+(defn line-column 
+  "Returns the line and column vector corresponding to the cursor in string s"
+  [^String s cursor]
+  (loop [i 0, nl-cnt 0, col 0] 
+    (if (= i cursor) [(inc nl-cnt) (inc col)] 
+      (if (== (int(.charAt s i)) (int \newline)) 
+        (recur (inc i) (inc nl-cnt) 0) 
+        (recur (inc i) nl-cnt (inc col))))))
+
+(defn- line-pos* 
+  "Returns the line and column vector for the specified cursor position"
+  [cursor]
+  (let [[^String s _ _ _] (state)]
+    (loop [i 0, nl-cnt 0, col 0]
+         (if (= i cursor) [(inc nl-cnt) (inc col)]
            (if (== (int(.charAt s i)) (int \newline))
              (recur (inc i) (inc nl-cnt) 0)
              (recur (inc i) nl-cnt (inc col)))))))
 
+(defn line-pos
+  "Returns [line column] vector corresponding to the specified cursor position (or
+   the current position if cursor is not specified) of the parser"
+  ([] (line-pos* (cursor-pos)))
+  ([cursor] (line-pos* cursor)))
+
 (defn line-pos-str
-  "Returns line position in a descriptive string."
-  [] (let [lp (line-pos)] (str "line " (lp 0) ", col " (lp 1))))
+  "Returns line position in a descriptive string. If the cursor position is specified,
+   the returned value corresponds to that position.  Otherwise, the returned value
+   corresponds to the current position."
+  ([] (line-pos-str (cursor-pos)))
+  ([cursor] (let [lp (line-pos cursor)] (str "line " (lp 0) ", col " (lp 1)))))
 
 ; ------------------ create & configure the parser ------------
 
@@ -625,19 +775,46 @@
         wsr #(ws? (bco 0) (bco 1) lcb ws-re)]
     (assoc opts :default-ws-reader wsr)))
 
+(defn set-opts 
+  "Sets specified parser options"
+  [opts] 
+  (swap! *parser-state* 
+    #(let [[s c p o] %
+           o (merge o opts)
+           o (merge o (init-default-ws-reader o))]
+       [s c p o])))
+
+(defn- reset-opts [opts]
+  (swap! *parser-state* 
+    #(let [[s c p o] %] [s c p opts])))
+
 (defn set-opt
   "Sets parser option k to value v"
-  [k v] (swap! *parser-state*
+  [k v] #_(swap! *parser-state*
                #(let [[s c p o] %
                       o (-> o (assoc k v) (init-default-ws-reader))]
-                  [s c p (assoc o k v)])))
+                  [s c p (assoc o k v)]))
+  (set-opts {k v}))
+
+(defn get-opts
+  "Returns all parser options"
+  [] (let [[_ _ _ o] (state)] o))
 
 (defn get-opt
   "Returns the value for parser option k; if the optional default value
   parameter d is specified, its value is returned if the option k is not set
   in parser options."
   ([k] (get-opt k nil))
-  ([k d] (let [[_ _ _ o] (state)] (get o k d))))
+  ([k d] (get (get-opts) k d)))
+
+(defn with-opts [opts parse-fn]
+  "Sets the parser options specified in the opts map and applies the parse-fn 
+   function. Returns the result of applying parse-fn.  
+   
+   Ensures that the original parse options are restored before the function exits." 
+  (let [orig-opts (get-opts)]
+    (set-opts opts)
+    (try (parse-fn) (finally (reset-opts orig-opts)))))
 
 (defn auto-trim-on
   "Turns on auto-trim feature that cleans trailing white-space, comments
@@ -678,7 +855,7 @@
 
 (defn- get-prev [] ((state) 2))
 
-(defn- get-opts [] ((state) 3))
+(defn get-opts [] ((state) 3))
 
 (defn- set-pos
   ([pos] (set-pos pos (get-pos)))
@@ -707,23 +884,19 @@
   "Executes the provided body with auto-trim option set to true.  The earlier
   value of the auto-trim option is restored after executing the body."
   [& body]
-  (let [at (get-opt :auto-trim)]
-    `(do
+    `(let [at# (get-opt :auto-trim)]
        (set-opt :auto-trim true)
-       (let [ret# (do ~@body)]
-         (set-opt :auto-trim ~at)
-         ret# ))))
+       (let [ret# (try (do ~@body) (finally (set-opt :auto-trim at#)))]
+         ret# )))
 
 (defmacro with-trim-off
   "Executes the provided body with auto-trim option set to false.  The earlier
   value of the auto-trim option is restored after executing the body."
   [& body]
-  (let [at (get-opt :auto-trim)]
-    `(do
+    `(let [at# (get-opt :auto-trim)]
        (set-opt :auto-trim false)
-       (let [ret# (do ~@body)]
-         (set-opt :auto-trim ~at)
-         ret# ))))
+       (let [ret# (try (do ~@body) (finally (set-opt :auto-trim at#)))]
+         ret# )))
 
 (defn no-trim
   "Similar to with-trim-off, but takes a function as a parameter instead of
@@ -744,8 +917,7 @@
   at the end of execution of the specified function."
   [parse-fn] (let [wsre (get-opt :ws-regex)]
          (set-opt :ws-regex #"[ \t]+")
-         (let [result (parse-fn)]
-           (set-opt :ws-regex wsre)
+         (let [result (try (parse-fn) (finally (set-opt :ws-regex wsre)))]
            result)))
 
 (defmacro no-trim-nl_
