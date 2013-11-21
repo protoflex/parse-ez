@@ -377,7 +377,7 @@ user> (parse #(do (skip-over ">>") (number)) "ignore upto this>> 456.7")
 Parse Combinators in Parse-EZ are higher-order functions that take other parse
 functions as input arguments and combine/apply them in different ways to 
 implement new parse functionality.  Parse-EZ provides parse combinators such as:
-`opt`, `attempt`, `any`, `series`, `multi*`, `multi+`, `between`, `look-ahead`, `lexeme`,
+`opt`, `attempt`, `any`, `series`, `multi\*`, `multi+`, `between`, `look-ahead`, `lexeme`,
 `expect`, etc.
 [See API Documentation][api]
 
@@ -403,6 +403,14 @@ user>
 
 You can create your own parse functions on top of primitive parse-functions and/or
 parse combinators provided by Parse-EZ.
+
+## Committing to a particular parse branch
+
+Version 0.4.0 added support for committing to a particular parse branch via
+the new parse combinators `commit` and `commit-on`. These functions make the 
+parser commit to the current parse branch, making the parser report subsequent
+parse-failures in the current branch as parse-errors and preventing it 
+from trying other alternatives at higher levels.
 
 ## Nesting Parse Combinators Using Macros
 
