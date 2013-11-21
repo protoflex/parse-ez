@@ -6,7 +6,7 @@
 (defn csv
   "Reads and returns one or more records as a vector of vector of field-values"
   ([] (csv (no-trim #(detect-sep))))
-  ([sep] (multi* (fn [] (no-trim-nl #(csv-1 sep))))))
+  ([sep] (multi* (fn [] (no-trim #(csv-1 sep))))))
 
 (defn csv-1
   "Reads and returns the fields of one record (line)"
