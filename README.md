@@ -32,7 +32,7 @@ you can make use of this library to quickly create a parser.
 Just add Parse-EZ as a dependency to your lein project
 
 ```clojure
-[parse-ez "0.3.4"]
+[protoflex/parse-ez "0.4.1"]
 ```
 and run
 
@@ -90,18 +90,18 @@ automatically trims whitespace after successfully applying a parse function.
 This means that the newline at the end of line would be consumed after reading
 the last field value and the `sep-by` would be unable to match the end-of-line
 which is the record-separator in this case.  So, we will disable the newline
-trimming functionality using the `no-trim-nl` combinator.
+trimming functionality using the `no-trim` combinator.
 
 ```clojure
 (defn csv [sep] 
-    (multi* (fn [] (no-trim-nl #(csv-1 sep)))))
+    (multi* (fn [] (no-trim #(csv-1 sep)))))
 ```
 
 Alternatively, you can express the above function a bit more easily using the macro versions of combinators introduced in Version 0.3.0 as follows:
 
 ```clojure
 (defn csv [sep] 
-    (multi* (no-trim-nl_ (csv-1 sep))))
+    (multi* (no-trim_ (csv-1 sep))))
 ```
 
 Now, let us try out our csv parser. First let us define a couple of test 
