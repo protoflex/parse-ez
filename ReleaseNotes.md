@@ -28,7 +28,7 @@ The following minor changes/additions are made in the current release:
 - Bug fixes for `with-trim-on` and `with-trim-off`; they were not properly 
   resetting the auto-trim option to original value.
 
-## Version 0.4.0
+## Version 0.4.1
 
 - Added functionality to commit to a particular parse branch and prevent
   the parser from trying alternatives at higher levels on parse-failure.
