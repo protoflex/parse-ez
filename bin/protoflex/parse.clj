@@ -20,7 +20,7 @@
          mark-pos back-to-mark any-string dq-str sq-str read-to-re at-end? 
          no-trim no-trim-nl get-opts set-opt get-default-ops 
          get-default-op-fn-map init-operators read-ws string expect
-         line-pos-str cursor-pos with-opts read-to-re-or-eof to-eof with-trim-off)
+         line-pos-str cursor-pos with-opts read-to-re-or-eof to-eof)
 
 (def ^:dynamic *parser-state* (atom []))
 (defn state [] (deref *parser-state*))
@@ -684,7 +684,7 @@
   current position."
   [beg]
   (if beg 
-    (->> (no-trim (fn [] (series #(string beg) #(regex #"[^\n]*\n?"))))
+    (->> (with-trim-off (series #(string beg) #(regex #"[^\n]*\n?"))) 
          (apply str))))
 
 (defn line-cmt?
@@ -893,15 +893,15 @@
   "Executes the provided body with auto-trim option set to false.  The earlier
   value of the auto-trim option is restored after executing the body."
   [& body]
-    `(no-trim (fn [] ~@body)))
+    `(let [at# (get-opt :auto-trim)]
+       (set-opt :auto-trim false)
+       (let [ret# (try (do ~@body) (finally (set-opt :auto-trim at#)))]
+         ret# )))
 
 (defn no-trim
   "Similar to with-trim-off, but takes a function as a parameter instead of
   the body"
-  [parse-fn] 
-  (let [at (get-opt :auto-trim)]
-    (set-opt :auto-trim false)
-    (try (parse-fn) (finally (set-opt :auto-trim at)))))
+  [parse-fn] (with-trim-off (parse-fn)))
 
 (defmacro no-trim_
   "Creates and returns a parse function that calls `no-trim` when it is

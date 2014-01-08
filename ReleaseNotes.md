@@ -41,4 +41,4 @@ The following minor changes/additions are made in the current release:
 - Bug fixes for `sep-by`, `any-string` and `line-cmt`.
 
 - Leiningen coordinates: group-id 'protoflex' should be included now.
-  Eg: [protoflex/parse-ez 0.4.0], instead of [parse-ez 0.3.6].
+  Eg: [protoflex/parse-ez 0.4.2], instead of [parse-ez 0.3.6].

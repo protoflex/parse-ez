@@ -32,7 +32,7 @@ you can make use of this library to quickly create a parser.
 Just add Parse-EZ as a dependency to your lein project
 
 ```clojure
-[protoflex/parse-ez "0.4.1"]
+[protoflex/parse-ez "0.4.2"]
 ```
 and run
 
