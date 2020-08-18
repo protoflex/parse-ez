@@ -1,6 +1,6 @@
 # Parse-EZ : Clojure Parser Library
 
-[api]: http://www.protoflex.com/parse-ez/api-doc/protoflex.parse-api.html "Parse-EZ API"
+[api]: https://www.protoflex.com/protoflex.parse-api.html "Parse-EZ API"
 [API Documentation][api]
 
 Parse-EZ is a parser library for Clojure programmers. It allows easy
